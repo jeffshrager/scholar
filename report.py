@@ -67,7 +67,7 @@ def report_stats(db):
 # Since-date report
 # ---------------------------------------------------------------------------
 
-def report_since(db, since_year):
+def report_since(db, since_year, nolist=False):
     papers = db["papers"]
     citations = db["citations"]
 
@@ -94,13 +94,15 @@ def report_since(db, since_year):
     print(f"=== {total} citation(s) published in {since_year} or later ===")
     print(f"    (across {len(by_paper)} of your paper(s))\n")
 
-    # Sort papers by their most recent citing paper year
-    sorted_papers = sorted(by_paper.items(),
-                           key=lambda kv: max(int(c.get("year") or 0) for c in kv[1]),
-                           reverse=True)
+    # Sort papers by citation count descending
+    sorted_papers = sorted(by_paper.items(), key=lambda kv: len(kv[1]), reverse=True)
 
     for pid, cites in sorted_papers:
         paper_title = papers.get(pid, {}).get("title", pid)
+        if nolist:
+            print(f"  {len(cites):4d}  {paper_title}")
+            continue
+        print(f"{'=' * 72}")
         print(f"  [{len(cites)} citing]  {paper_title}")
         print(f"  {'─' * 70}")
         for c in cites:
@@ -123,12 +125,14 @@ def main():
     ap = argparse.ArgumentParser(description="Google Scholar citation DB reporter")
     ap.add_argument("--since", metavar="YEAR", type=int,
                     help="Show citing papers published in YEAR or later (e.g. --since 2023)")
+    ap.add_argument("--nolist", action="store_true",
+                    help="With --since: show only the per-paper counts, suppress individual citations")
     args = ap.parse_args()
 
     db = load_db()
 
     if args.since:
-        report_since(db, args.since)
+        report_since(db, args.since, nolist=args.nolist)
     else:
         report_stats(db)
 
