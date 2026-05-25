@@ -207,7 +207,10 @@ def _next_url(page):
 
 
 def _parse_info_line(info):
-    """Split 'Authors - Venue, Year' into (authors, venue, year)."""
+    """Split 'Authors - Venue, Year' into (authors, venue, year).
+    GS uses non-breaking spaces (\xa0) around the hyphen separator."""
+    # Normalise: replace non-breaking spaces so the split works reliably
+    info = info.replace("\xa0", " ")
     parts = info.split(" - ", 1)
     authors = parts[0].strip()
     venue_year = parts[1].strip() if len(parts) > 1 else ""
