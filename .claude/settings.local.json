@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(conda run *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(kill 43795 43783 43781)"
     ]
   }
 }
