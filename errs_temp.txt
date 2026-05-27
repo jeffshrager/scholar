@@ -1,0 +1,142 @@
+Found 12 paper(s) with pub year AFTER at least one citation (12 offending citation(s) total).
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Routine Evolution as the Microgenetic Basis of Skill Acquistion
+  KEY   : weAbyM4AAAAJ:pyW8ca7W8N0C
+  YEAR  : 2022  (GS cites: 46, stored complete: yes)
+  FIX   : pub year should be ≤ 1991  [inversion = 31 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [1991] Interaction, comprehension, and instruction usage
+           R Alterman, R Zito-Wolf, T Carpenter
+           Taylor & Francis
+           https://www.tandfonline.com/doi/abs/10.1080/10508406.1991.9671975
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : A dynamical theory of the power-law of learning in problem-solving
+  KEY   : weAbyM4AAAAJ:uJ-U7cs_P_0C
+  YEAR  : 2019  (GS cites: 7, stored complete: yes)
+  FIX   : pub year should be ≤ 1989  [inversion = 30 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [1989] Human memory: An adaptive perspective.
+           JR Anderson, R Milson
+           psycnet.apa.org
+           https://psycnet.apa.org/journals/rev/96/4/703/
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Acquisition of Device Models in Instructionless Learning
+  KEY   : weAbyM4AAAAJ:isC4tDSrTZIC
+  YEAR  : 2014  (GS cites: 3, stored complete: yes)
+  FIX   : pub year should be ≤ 1985  [inversion = 29 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [1985] Learning by exploration
+           JM Robert
+           Elsevier
+           https://www.sciencedirect.com/science/article/pii/S1474667017602180
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Reinterpretation and the perceptual microstructure of conceptual knowledge: Cognition considered as a perceptual skill
+  KEY   : weAbyM4AAAAJ:zLWjf1WUPmwC
+  YEAR  : 2014  (GS cites: 3, stored complete: yes)
+  FIX   : pub year should be ≤ 1990  [inversion = 24 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [1990] Towards a theory of commonsense visual reasoning
+           B Chandrasekaran, NH Narayanan
+           Springer
+           https://link.springer.com/chapter/10.1007/3-540-53487-3_59
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Temporal aggregation bias and inference of causal regulatory networks
+  KEY   : weAbyM4AAAAJ:3fE2CSJIrl8C
+  YEAR  : 2004  (GS cites: 39, stored complete: yes)
+  FIX   : pub year should be ≤ 1980  [inversion = 24 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [1980] PlaNet: the Plant Bioenergy Network Project
+           C Collings, P Hu, Y Jiao, Y Kim
+           Michigan State University
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Targeted Therapy Database (TTD): a model to match patient's molecular profile with current knowledge on cancer biology
+  KEY   : weAbyM4AAAAJ:iH-uZ7U-co4C
+  YEAR  : 2010  (GS cites: 26, stored complete: yes)
+  FIX   : pub year should be ≤ 1990  [inversion = 20 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [1990] Curriculum professionale
+           I Personali
+           prolocosanthia.it
+           https://prolocosanthia.it/wp-content/uploads/2025/09/2024-Amministrazione-Trasparente-Consulenze-e-Collaborazioni.pdf
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : AI-augmented clinical decision support in a patient-centric precision oncology registry
+  KEY   : weAbyM4AAAAJ:evX43VCCuoAC
+  YEAR  : 2024  (GS cites: 28, stored complete: yes)
+  FIX   : pub year should be ≤ 2009  [inversion = 15 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [2009] Promoting informed decision-making in a primary care practice by implementing decision aids
+           CL Lewis, MP Pignone
+           pmc.ncbi.nlm.nih.gov
+           https://pmc.ncbi.nlm.nih.gov/articles/PMC3213756/
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Groups: knowledge spreadsheets for symbolic biocomputing
+  KEY   : weAbyM4AAAAJ:K3LRdlH-MEoC
+  YEAR  : 2013  (GS cites: 31, stored complete: yes)
+  FIX   : pub year should be ≤ 2010  [inversion = 3 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [2010] Pathway Tools version 13.0: integrated software for pathway/genome informatics and systems biology
+           PD Karp, SM Paley, M Krummenacker…
+           academic.oup.com
+           https://academic.oup.com/bib/article-abstract/11/1/40/193600
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : The CACHE study: Group effects in computer-supported collaborative analysis
+  KEY   : weAbyM4AAAAJ:_kc_bZDykSQC
+  YEAR  : 2008  (GS cites: 112, stored complete: yes)
+  FIX   : pub year should be ≤ 2006  [inversion = 2 yrs]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [2006] Investigating the cognitive effects of Externalization tools
+           FH Madsen, DL Hicks
+           huitfeldt.com
+           http://huitfeldt.com/repository/ITW06.pdf#page=4
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Rapid learning for precision oncology
+  KEY   : weAbyM4AAAAJ:08ZZubdj9fEC
+  YEAR  : 2014  (GS cites: 111, stored complete: yes)
+  FIX   : pub year should be ≤ 2013  [inversion = 1 yr]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [2013] Published'Reviews'
+           HR Benjamin'Kasenda
+           … steps, and $ pitfalls $ towards (personalized (medicine' …
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : The Journey from Child to Scientist: Integrating Cognitive Development and the Education Sciences.
+  KEY   : weAbyM4AAAAJ:SP6oXDckpogC
+  YEAR  : 2012  (GS cites: 10, stored complete: yes)
+  FIX   : pub year should be ≤ 2011  [inversion = 1 yr]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [2011] Epistemología de la imaginación
+           LM Rodríguez-Salazar, CP Rosas-Colín…
+           Cuadernos UFS Filosofía
+
+────────────────────────────────────────────────────────────────────────
+  PAPER : Diary of an insane cell mechanic
+  KEY   : weAbyM4AAAAJ:tkaPQYYpVKoC
+  YEAR  : 2004  (GS cites: 51, stored complete: no)
+  FIX   : pub year should be ≤ 2003  [inversion = 1 yr]
+  ──────────────────────────────────────────────────────────────────────
+  EARLIEST OFFENDING CITATION:
+    [2003] Procedural knowledge in molecular biology
+           B Sahdra, P Thagard
+           Taylor & Francis
+           https://www.tandfonline.com/doi/abs/10.1080/0951508032000121788
