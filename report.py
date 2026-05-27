@@ -120,10 +120,84 @@ def write_errors_tsv(errors):
 
 
 # ---------------------------------------------------------------------------
+# Sorting helpers
+# ---------------------------------------------------------------------------
+
+def get_sort_key(sortby, paper, cites, frequency_count=None):
+    """
+    Return a numeric sort key (higher → ranked first).
+
+    sortby choices:
+      frequency   — total citation count (frequency_count if supplied, else len(cites))
+      recency     — most recent citation year
+      distance    — max(cite_year) − pub_year  [crude longevity]
+      centroid    — mean(cite_years) − pub_year  [where citations cluster in time]
+      longevity   — max(cite_year) − min(cite_year)  [how long in circulation]
+      latebloomer — median(cite_years) − pub_year  [delayed recognition]
+      momentum    — recency-weighted mean(cite_year) − pub_year; each citation is
+                    weighted by its own distance from pub_year, so recent citations
+                    count more than early ones
+
+    Papers/cites with no usable years sort to the bottom (key = -1).
+    """
+    if sortby == "frequency":
+        return frequency_count if frequency_count is not None else len(cites)
+
+    # Collect valid citation years
+    years = []
+    for c in cites:
+        try:
+            y = int(c.get("year") or 0)
+            if y > 0:
+                years.append(y)
+        except (ValueError, TypeError):
+            pass
+
+    if not years:
+        return -1
+
+    # Parse pub year once (used by several metrics)
+    try:
+        pub_year = int(paper.get("year") or 0)
+    except (ValueError, TypeError):
+        pub_year = 0
+
+    if sortby == "recency":
+        return max(years)
+
+    if sortby == "distance":
+        return (max(years) - pub_year) if pub_year > 0 else -1
+
+    if sortby == "centroid":
+        mean_year = sum(years) / len(years)
+        return (mean_year - pub_year) if pub_year > 0 else mean_year
+
+    if sortby == "longevity":
+        return max(years) - min(years)
+
+    if sortby == "latebloomer":
+        sy = sorted(years)
+        n  = len(sy)
+        median = (sy[n // 2 - 1] + sy[n // 2]) / 2 if n % 2 == 0 else sy[n // 2]
+        return (median - pub_year) if pub_year > 0 else median
+
+    if sortby == "momentum":
+        # Weight each citation by (cite_year − pub_year), floor 1.
+        # Papers whose recent citations dominate score highest.
+        base = pub_year if pub_year > 0 else min(years)
+        weights = [max(y - base, 1) for y in years]
+        w_mean  = sum(y * w for y, w in zip(years, weights)) / sum(weights)
+        return (w_mean - pub_year) if pub_year > 0 else w_mean
+
+    # Fallback
+    return frequency_count if frequency_count is not None else len(cites)
+
+
+# ---------------------------------------------------------------------------
 # Stats report
 # ---------------------------------------------------------------------------
 
-def report_stats(db):
+def report_stats(db, sortby="frequency"):
     author    = db.get("author", {})
     papers    = db["papers"]
     citations = db["citations"]
@@ -145,19 +219,22 @@ def report_stats(db):
     print(f"  incomplete:    {incomplete}  (re-run scholar.py to finish)")
     print(f"Citations (GS):  {total_gs}")
     print(f"Citations (DB):  {total_stored}")
+    print(f"Sorted by:       {sortby}")
     print()
 
     rows = []
     for pid, p in papers.items():
-        stored = len(citations.get(pid, []))
-        rows.append((p["citation_count"], stored,
+        stored    = len(citations.get(pid, []))
+        sort_key  = get_sort_key(sortby, p, citations.get(pid, []),
+                                 frequency_count=p.get("citation_count", 0))
+        rows.append((sort_key, p.get("citation_count", 0), stored,
                      p.get("citations_complete", False),
                      p["title"], p.get("year", "")))
-    rows.sort(reverse=True)
+    rows.sort(key=lambda r: r[0], reverse=True)
 
     print(f"{'Title':<62} {'Year':>4}  {'GS':>5}  {'DB':>5}  {'Done':>4}")
     print("-" * 85)
-    for gs_n, db_n, done, title, year in rows:
+    for _key, gs_n, db_n, done, title, year in rows:
         flag = "yes" if done else "no"
         print(f"{title[:62]:<62} {str(year):>4}  {gs_n:>5}  {db_n:>5}  {flag:>4}")
 
@@ -166,7 +243,7 @@ def report_stats(db):
 # Since-year report
 # ---------------------------------------------------------------------------
 
-def report_since(db, since_year, nolist=False):
+def report_since(db, since_year, nolist=False, sortby="frequency"):
     papers    = db["papers"]
     citations = db["citations"]
 
@@ -190,9 +267,14 @@ def report_since(db, since_year, nolist=False):
 
     total = sum(len(v) for v in by_paper.values())
     print(f"=== {total} citation(s) published in {since_year} or later ===")
-    print(f"    (across {len(by_paper)} of your paper(s))\n")
+    print(f"    (across {len(by_paper)} of your paper(s))  [sorted by: {sortby}]\n")
 
-    sorted_papers = sorted(by_paper.items(), key=lambda kv: len(kv[1]), reverse=True)
+    sorted_papers = sorted(
+        by_paper.items(),
+        key=lambda kv: get_sort_key(sortby, papers.get(kv[0], {}), kv[1],
+                                    frequency_count=len(kv[1])),
+        reverse=True,
+    )
 
     if nolist:
         print(f"  {'Cites':>5}  {'Pub':>4}  Title")
@@ -230,6 +312,34 @@ def main():
                     help="Show citing papers published in YEAR or later (e.g. --since 2023)")
     ap.add_argument("--nolist", action="store_true",
                     help="With --since: show per-paper counts only, suppress individual citations")
+    ap.add_argument(
+        "--sortby",
+        choices=["frequency", "recency", "distance",
+                 "centroid", "longevity", "latebloomer", "momentum"],
+        default="frequency",
+        metavar="METRIC",
+        help=(
+            "How to rank papers in the report (default: frequency).\n\n"
+            "  frequency   — total citation count (GS number in stats mode,\n"
+            "                filtered count in --since mode)\n\n"
+            "  recency     — year of the most recent stored citation\n\n"
+            "  distance    — most_recent_cite_year minus pub_year; raw longevity\n"
+            "                signal, but one stray late cite dominates\n\n"
+            "  centroid    — mean(cite_years) minus pub_year; shows where the\n"
+            "                centre of citation mass actually sits in time\n\n"
+            "  longevity   — most_recent_cite_year minus first_cite_year;\n"
+            "                how long the paper has stayed in circulation,\n"
+            "                independent of pub date\n\n"
+            "  latebloomer — median(cite_years) minus pub_year; rewards papers\n"
+            "                where the majority of attention arrived late\n\n"
+            "  momentum    — recency-weighted mean(cite_years) minus pub_year;\n"
+            "                each citation is weighted by its own distance from\n"
+            "                pub_year, so a cluster of recent cites scores much\n"
+            "                higher than an equal-sized early cluster\n\n"
+            "Choices: frequency | recency | distance | centroid |\n"
+            "         longevity | latebloomer | momentum"
+        ),
+    )
     args = ap.parse_args()
 
     db = load_db()
@@ -241,9 +351,9 @@ def main():
     print()
 
     if args.since:
-        report_since(db, args.since, nolist=args.nolist)
+        report_since(db, args.since, nolist=args.nolist, sortby=args.sortby)
     else:
-        report_stats(db)
+        report_stats(db, sortby=args.sortby)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,8 @@
       "Bash(python3 *)",
       "Bash(kill 43795 43783 43781)",
       "Bash(git add *)",
-      "Bash(git commit -m 'Use random 5–15s delays between GS page loads to reduce bot detection *)"
+      "Bash(git commit -m 'Use random 5–15s delays between GS page loads to reduce bot detection *)",
+      "Bash(python *)"
     ]
   }
 }
