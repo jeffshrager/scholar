@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """
-check_pubdates.py — find papers whose recorded pub year is AFTER one or more
-of their stored citations, which is logically impossible and usually means
-Google Scholar has the wrong year for your paper.
+check_pubdates.py — data-quality checks on the local Google Scholar citation DB.
+
+Always prints:
+  1. Incomplete scans — papers whose citation fetch was never finished,
+     sorted by shortfall (GS count − stored count).
+  2. Count mismatches — papers marked complete but where stored count ≠ GS count,
+     sorted by |delta|.  A negative delta means fewer stored than GS reports;
+     positive means more stored (can happen if GS count drifted down).
+  3. Date inversions — papers whose recorded pub year is AFTER one or more
+     of their stored citations (logically impossible; usually a wrong GS year).
 
 Usage:
-  python check_pubdates.py            # print flagged papers to stdout
-  python check_pubdates.py --tsv      # also write check_pubdates.tsv
+  python check_pubdates.py            # run both checks, print to stdout
+  python check_pubdates.py --tsv      # also write check_pubdates.tsv (inversions)
   python check_pubdates.py --all      # show every offending citation,
                                       # not just the earliest-cited one
   python check_pubdates.py --tsv --all
 
-For each flagged paper the report shows:
+For each date-inverted paper the report shows:
   • your paper's title, its recorded pub year, and its GS citation count
   • the earliest citation that predates it (--all: every such citation)
   • a suggested "pub year ≤ N" correction derived from the earliest offender
@@ -36,6 +43,50 @@ def load_db():
     if not DB_FILE.exists():
         raise SystemExit(f"Database not found: {DB_FILE}\nRun scholar.py first.")
     return json.loads(DB_FILE.read_text())
+
+
+def find_count_mismatches(db):
+    """
+    Return papers marked citations_complete=True but where the number of stored
+    citations doesn't match the GS citation_count, sorted by abs(shortfall) desc.
+    """
+    papers    = db["papers"]
+    citations = db["citations"]
+
+    rows = []
+    for pid, p in papers.items():
+        if not p.get("citations_complete"):
+            continue
+        gs_count     = p.get("citation_count", 0) or 0
+        stored_count = len(citations.get(pid, []))
+        if stored_count == gs_count:
+            continue
+        rows.append({
+            "paper_id":    pid,
+            "paper_title": p.get("title", pid),
+            "paper_year":  p.get("year", ""),
+            "gs_count":    gs_count,
+            "stored":      stored_count,
+            "delta":       stored_count - gs_count,   # negative = stored < GS
+        })
+
+    rows.sort(key=lambda r: abs(r["delta"]), reverse=True)
+    return rows
+
+
+def print_count_mismatches(rows):
+    if not rows:
+        print("No count mismatches found among complete scans.")
+        return
+
+    print(f"=== {len(rows)} paper(s) marked complete but stored count ≠ GS count ===\n")
+    print(f"  {'GS':>5}  {'Stored':>6}  {'Delta':>6}  {'Year':>4}  Title")
+    print(f"  {'─'*5}  {'─'*6}  {'─'*6}  {'─'*4}  {'─'*60}")
+    for r in rows:
+        delta_str = f"{r['delta']:+d}"
+        print(f"  {r['gs_count']:>5}  {r['stored']:>6}  {delta_str:>6}  "
+              f"{str(r['paper_year']):>4}  {r['paper_title']}")
+    print()
 
 
 def find_date_inversions(db, all_offenders=False):
@@ -159,6 +210,49 @@ def write_tsv(rows):
     print(f"Wrote {len(out)} row(s) to {TSV_FILE.name}")
 
 
+def find_incomplete(db):
+    """
+    Return a list of dicts for papers whose citation fetch was never completed,
+    sorted by shortfall (GS count − stored count) descending.
+    """
+    papers    = db["papers"]
+    citations = db["citations"]
+
+    rows = []
+    for pid, p in papers.items():
+        if p.get("citations_complete"):
+            continue
+        gs_count     = p.get("citation_count", 0) or 0
+        stored_count = len(citations.get(pid, []))
+        rows.append({
+            "paper_id":    pid,
+            "paper_title": p.get("title", pid),
+            "paper_year":  p.get("year", ""),
+            "gs_count":    gs_count,
+            "stored":      stored_count,
+            "shortfall":   gs_count - stored_count,
+        })
+
+    rows.sort(key=lambda r: r["shortfall"], reverse=True)
+    return rows
+
+
+def print_incomplete(rows):
+    if not rows:
+        print("All papers have complete citation fetches.")
+        return
+
+    total_shortfall = sum(r["shortfall"] for r in rows)
+    print(f"=== {len(rows)} paper(s) with incomplete citation fetches "
+          f"({total_shortfall} citation(s) not yet stored) ===\n")
+    print(f"  {'GS':>5}  {'Stored':>6}  {'Short':>5}  {'Year':>4}  Title")
+    print(f"  {'─'*5}  {'─'*6}  {'─'*5}  {'─'*4}  {'─'*60}")
+    for r in rows:
+        print(f"  {r['gs_count']:>5}  {r['stored']:>6}  {r['shortfall']:>5}  "
+              f"{str(r['paper_year']):>4}  {r['paper_title']}")
+    print()
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=(
@@ -190,10 +284,16 @@ def main():
     )
     args = ap.parse_args()
 
-    db   = load_db()
-    rows = find_date_inversions(db, all_offenders=args.all)
+    db = load_db()
 
     print()
+    incomplete = find_incomplete(db)
+    print_incomplete(incomplete)
+
+    mismatches = find_count_mismatches(db)
+    print_count_mismatches(mismatches)
+
+    rows = find_date_inversions(db, all_offenders=args.all)
     print_report(rows, all_offenders=args.all)
 
     if args.tsv:

@@ -52,7 +52,25 @@ All reporting modes accept `--sortby` to control how papers are ranked:
 | `latebloomer` | Median cite year minus pub year (rewards delayed recognition) |
 | `momentum` | Recency-weighted mean cite year minus pub year (recent citations count more) |
 
-**`--hist`** prints a horizontal-bar histogram — one row per paper, bars (`█`) proportional to GS citation count, papers ranked top→bottom by the chosen `--sortby` metric. No error-check output is produced.
+For any metric other than `frequency`, the computed score is displayed alongside the citation count in every report mode (as a dedicated `Score` column in table views, inline in full `--since` listings, and as an extra field in histogram rows). For `frequency`, the count *is* the score so no extra column is shown.
+
+**`--hist`** prints a horizontal-bar histogram — one row per paper, bars (`█`) proportional to GS citation count, papers ranked top→bottom by the chosen `--sortby` metric. When `--sortby` is not `frequency`, the score is printed after the count. No error-check output is produced.
+
+### `check_pubdates.py` — data-quality checks
+
+Runs three independent checks against `scholar_db.json` and prints the results. No network access needed.
+
+```bash
+conda run -n test python check_pubdates.py            # all three checks to stdout
+conda run -n test python check_pubdates.py --tsv      # also write check_pubdates.tsv (inversions only)
+conda run -n test python check_pubdates.py --all      # show every offending citation, not just the earliest
+```
+
+**Check 1 — Incomplete scans:** papers whose citation fetch was never finished (`citations_complete = false`). Sorted by shortfall (GS count − stored count) so the most under-scraped papers appear first. Re-run `scholar.py` to resume these.
+
+**Check 2 — Count mismatches:** papers marked `citations_complete = true` but where the number of stored citations doesn't match GS's `citation_count`. Delta is signed (`+` = more stored than GS reports, `−` = fewer). Sorted by `|delta|`. Usually means GS's count drifted or the scrape silently dropped a page.
+
+**Check 3 — Date inversions:** papers whose recorded pub year is *after* one or more of their stored citations — logically impossible, usually a wrong GS year for your paper. Shows the earliest offending citation and a suggested corrected pub year. Sorted by inversion magnitude. Fix by editing the `"year"` field in `scholar_db.json` for the affected paper.
 
 ## Configuration
 
