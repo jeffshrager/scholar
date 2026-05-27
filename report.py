@@ -6,12 +6,15 @@ Usage:
   python report.py              # show DB stats
   python report.py --since YEAR # citations by papers published in YEAR or later
   python report.py --since YEAR --nolist  # summary counts only, no individual citations
+  python report.py --hist       # horizontal-bar histogram, sorted by --sortby
 
-Every run also writes errors.tsv with suspicious citation records (impossible years, etc.).
+Every run (except --hist) also writes errors.tsv with suspicious citation records
+(impossible years, etc.).
 """
 
 import csv
 import json
+import shutil
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -194,6 +197,20 @@ def get_sort_key(sortby, paper, cites, frequency_count=None):
 
 
 # ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
+
+def fmt_score(v):
+    """Format a sort-key score: integer if whole, else one decimal place."""
+    try:
+        if v == int(v):
+            return str(int(v))
+    except (TypeError, ValueError, OverflowError):
+        pass
+    return f"{v:.1f}"
+
+
+# ---------------------------------------------------------------------------
 # Stats report
 # ---------------------------------------------------------------------------
 
@@ -232,11 +249,20 @@ def report_stats(db, sortby="frequency"):
                      p["title"], p.get("year", "")))
     rows.sort(key=lambda r: r[0], reverse=True)
 
-    print(f"{'Title':<62} {'Year':>4}  {'GS':>5}  {'DB':>5}  {'Done':>4}")
-    print("-" * 85)
-    for _key, gs_n, db_n, done, title, year in rows:
+    show_score = sortby != "frequency"
+    if show_score:
+        print(f"{'Title':<62} {'Year':>4}  {'GS':>5}  {'DB':>5}  {'Done':>4}  {sortby[:8]:>8}")
+        print("-" * 96)
+    else:
+        print(f"{'Title':<62} {'Year':>4}  {'GS':>5}  {'DB':>5}  {'Done':>4}")
+        print("-" * 85)
+    for key, gs_n, db_n, done, title, year in rows:
         flag = "yes" if done else "no"
-        print(f"{title[:62]:<62} {str(year):>4}  {gs_n:>5}  {db_n:>5}  {flag:>4}")
+        if show_score:
+            score_str = fmt_score(key) if key >= 0 else "n/a"
+            print(f"{title[:62]:<62} {str(year):>4}  {gs_n:>5}  {db_n:>5}  {flag:>4}  {score_str:>8}")
+        else:
+            print(f"{title[:62]:<62} {str(year):>4}  {gs_n:>5}  {db_n:>5}  {flag:>4}")
 
 
 # ---------------------------------------------------------------------------
@@ -269,26 +295,39 @@ def report_since(db, since_year, nolist=False, sortby="frequency"):
     print(f"=== {total} citation(s) published in {since_year} or later ===")
     print(f"    (across {len(by_paper)} of your paper(s))  [sorted by: {sortby}]\n")
 
-    sorted_papers = sorted(
-        by_paper.items(),
-        key=lambda kv: get_sort_key(sortby, papers.get(kv[0], {}), kv[1],
-                                    frequency_count=len(kv[1])),
-        reverse=True,
-    )
+    show_score = sortby != "frequency"
+
+    # Pre-compute sort keys so we can display them
+    sorted_papers = []
+    for pid, cites in by_paper.items():
+        sk = get_sort_key(sortby, papers.get(pid, {}), cites, frequency_count=len(cites))
+        sorted_papers.append((sk, pid, cites))
+    sorted_papers.sort(key=lambda t: t[0], reverse=True)
 
     if nolist:
-        print(f"  {'Cites':>5}  {'Pub':>4}  Title")
-        print(f"  {'─'*5}  {'─'*4}  {'─'*60}")
+        if show_score:
+            print(f"  {'Cites':>5}  {sortby[:8]:>8}  {'Pub':>4}  Title")
+            print(f"  {'─'*5}  {'─'*8}  {'─'*4}  {'─'*60}")
+        else:
+            print(f"  {'Cites':>5}  {'Pub':>4}  Title")
+            print(f"  {'─'*5}  {'─'*4}  {'─'*60}")
 
-    for pid, cites in sorted_papers:
+    for sk, pid, cites in sorted_papers:
         p          = papers.get(pid, {})
         paper_title = p.get("title", pid)
         pub_year    = p.get("year", "")
+        score_str  = (fmt_score(sk) if sk >= 0 else "n/a") if show_score else None
         if nolist:
-            print(f"  {len(cites):>5}  {str(pub_year):>4}  {paper_title}")
+            if show_score:
+                print(f"  {len(cites):>5}  {score_str:>8}  {str(pub_year):>4}  {paper_title}")
+            else:
+                print(f"  {len(cites):>5}  {str(pub_year):>4}  {paper_title}")
             continue
         print(f"{'=' * 72}")
-        print(f"  [{len(cites)} citing]  {paper_title}")
+        if show_score:
+            print(f"  [{len(cites)} citing | {sortby}: {score_str}]  {paper_title}")
+        else:
+            print(f"  [{len(cites)} citing]  {paper_title}")
         print(f"  {'─' * 70}")
         for c in cites:
             year_str = c.get("year") or "????"
@@ -303,6 +342,64 @@ def report_since(db, since_year, nolist=False, sortby="frequency"):
 
 
 # ---------------------------------------------------------------------------
+# Histogram report
+# ---------------------------------------------------------------------------
+
+def report_hist(db, sortby="frequency"):
+    """
+    Print a horizontal-bar histogram: one row per paper, bars proportional to
+    GS citation count, papers ordered top→bottom by the chosen sortby metric.
+    """
+    papers    = db["papers"]
+    citations = db["citations"]
+
+    rows = []
+    for pid, p in papers.items():
+        gs_count = p.get("citation_count", 0) or 0
+        sort_key = get_sort_key(sortby, p, citations.get(pid, []),
+                                frequency_count=gs_count)
+        rows.append((sort_key, gs_count, p.get("title", pid), p.get("year", "")))
+    rows.sort(key=lambda r: r[0], reverse=True)
+
+    if not rows:
+        print("No papers in database.")
+        return
+
+    max_gs = max(r[1] for r in rows) or 1
+
+    try:
+        term_width = shutil.get_terminal_size((100, 24)).columns
+    except Exception:
+        term_width = 100
+
+    show_score = sortby != "frequency"
+    score_w    = max(len(sortby), 5) if show_score else 0  # column width for score
+
+    BAR_CHAR  = "█"
+    BAR_MAX   = max(10, min(50, term_width // 2))
+    count_w   = len(str(max_gs))          # width of the citation-count field
+    # title gets whatever is left after bar + spaces + count + (score col) + spaces
+    extra     = (score_w + 2) if show_score else 0
+    title_w   = max(10, term_width - BAR_MAX - count_w - 4 - extra)
+
+    author = db.get("author", {})
+    print(f"Citation histogram — {author.get('name', '?')}  "
+          f"[sorted by: {sortby}]")
+    print()
+
+    for key, gs_count, title, year in rows:
+        bar_len   = round(gs_count / max_gs * BAR_MAX)
+        bar       = BAR_CHAR * bar_len
+        year_tag  = f" ({year})" if year else ""
+        label     = (title + year_tag)[:title_w]
+        if show_score:
+            score_str = fmt_score(key) if key >= 0 else "n/a"
+            print(f"{bar:<{BAR_MAX}}  {gs_count:{count_w}d}  {score_str:>{score_w}}  {label}")
+        else:
+            print(f"{bar:<{BAR_MAX}}  {gs_count:{count_w}d}  {label}")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -312,6 +409,8 @@ def main():
                     help="Show citing papers published in YEAR or later (e.g. --since 2023)")
     ap.add_argument("--nolist", action="store_true",
                     help="With --since: show per-paper counts only, suppress individual citations")
+    ap.add_argument("--hist", action="store_true",
+                    help="Display a horizontal-bar histogram ranked by --sortby (no other output)")
     ap.add_argument(
         "--sortby",
         choices=["frequency", "recency", "distance",
@@ -319,9 +418,12 @@ def main():
         default="frequency",
         metavar="METRIC",
         help=(
-            "How to rank papers in the report (default: frequency).\n\n"
+            "How to rank papers in the report (default: frequency).\n"
+            "For any metric other than 'frequency', the computed score is\n"
+            "displayed alongside the citation count in every report mode.\n\n"
             "  frequency   — total citation count (GS number in stats mode,\n"
-            "                filtered count in --since mode)\n\n"
+            "                filtered count in --since mode); score column\n"
+            "                omitted since count IS the score\n\n"
             "  recency     — year of the most recent stored citation\n\n"
             "  distance    — most_recent_cite_year minus pub_year; raw longevity\n"
             "                signal, but one stray late cite dominates\n\n"
@@ -343,6 +445,10 @@ def main():
     args = ap.parse_args()
 
     db = load_db()
+
+    if args.hist:
+        report_hist(db, sortby=args.sortby)
+        return
 
     # Always check for and report data quality errors
     print()

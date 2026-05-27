@@ -34,9 +34,25 @@ Reads `scholar_db.json` locally — no network access needed. Every run also wri
 conda run -n test python report.py                        # DB stats: papers, citation counts, completeness
 conda run -n test python report.py --since 2024           # citing papers published in 2024 or later, full detail
 conda run -n test python report.py --since 2024 --nolist  # same, counts-only summary table
+conda run -n test python report.py --hist                 # horizontal-bar histogram (no other output)
+conda run -n test python report.py --hist --sortby momentum  # histogram ranked by momentum
 ```
 
 The `--since` filter is by the **citing paper's publication year**, not the date it was scraped.
+
+All reporting modes accept `--sortby` to control how papers are ranked:
+
+| Metric | Description |
+|---|---|
+| `frequency` *(default)* | Total GS citation count |
+| `recency` | Year of the most recent stored citation |
+| `distance` | Most-recent-cite year minus pub year (raw longevity, one late cite dominates) |
+| `centroid` | Mean cite year minus pub year (where citation mass sits in time) |
+| `longevity` | Most-recent minus first-cite year (how long in circulation) |
+| `latebloomer` | Median cite year minus pub year (rewards delayed recognition) |
+| `momentum` | Recency-weighted mean cite year minus pub year (recent citations count more) |
+
+**`--hist`** prints a horizontal-bar histogram — one row per paper, bars (`█`) proportional to GS citation count, papers ranked top→bottom by the chosen `--sortby` metric. No error-check output is produced.
 
 ## Configuration
 
