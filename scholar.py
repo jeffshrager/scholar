@@ -17,6 +17,7 @@ Usage:
 import json
 import sys
 import argparse
+import random
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -28,8 +29,18 @@ except ImportError:
 SCHOLAR_ID = "weAbyM4AAAAJ"
 DB_FILE     = Path(__file__).parent / "scholar_db.json"
 BASE_URL    = "https://scholar.google.com"
-NAV_DELAY   = 2500   # ms to wait after each page load
-CLICK_DELAY = 1500   # ms to wait after clicking "Show more"
+NAV_DELAY_MIN   = 5_000   # ms — random delay range after each page load
+NAV_DELAY_MAX   = 15_000
+CLICK_DELAY_MIN = 5_000   # ms — random delay range after clicking "Show more"
+CLICK_DELAY_MAX = 15_000
+
+def nav_delay():
+    """Return a random delay (ms) in [NAV_DELAY_MIN, NAV_DELAY_MAX]."""
+    return random.randint(NAV_DELAY_MIN, NAV_DELAY_MAX)
+
+def click_delay():
+    """Return a random delay (ms) in [CLICK_DELAY_MIN, CLICK_DELAY_MAX]."""
+    return random.randint(CLICK_DELAY_MIN, CLICK_DELAY_MAX)
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -128,7 +139,7 @@ def scrape_profile(page):
     print(f"  Loading: {url}")
     page.goto(url)
     expect(page, "#gsc_a_b", "Try --visible so you can solve any CAPTCHA manually.")
-    page.wait_for_timeout(NAV_DELAY)
+    page.wait_for_timeout(nav_delay())
 
     # Get author name
     name_el = page.query_selector("#gsc_prf_in")
@@ -140,7 +151,7 @@ def scrape_profile(page):
         if not btn or not btn.is_enabled():
             break
         btn.click()
-        page.wait_for_timeout(CLICK_DELAY)
+        page.wait_for_timeout(click_delay())
 
     rows = page.query_selector_all("#gsc_a_b .gsc_a_tr")
     papers = []
@@ -244,7 +255,7 @@ def scrape_citing_papers(page, cite_url, existing_titles):
             except PlaywrightTimeout:
                 print("    Warning: timed out on citations page — stopping here")
                 return
-        page.wait_for_timeout(NAV_DELAY)
+        page.wait_for_timeout(nav_delay())
 
         results = page.query_selector_all("#gs_res_ccl_mid .gs_ri, #gs_res_ccl .gs_ri")
         for result in results:
